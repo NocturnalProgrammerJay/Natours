@@ -1,2 +1,2 @@
 # Natours
-### Run: npm init
+### Enter in bash terminal: npm i
