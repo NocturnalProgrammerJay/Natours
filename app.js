@@ -1,11 +1,13 @@
 // Express is a function that will add a bunch of methods to the app variable.
 const express = require('express');
+//Morgan module returns a function that reads http request and returns a message in the console.
 const morgan = require('morgan');
 
 //Routers
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
 
+//abstract layer(higher level) of nodejs - framework
 const app = express();
 
 // 1. Middleware - typically have all of them on the app.js
@@ -25,6 +27,7 @@ app.use(express.json());
 //express knows we are defining a middleware here and we can then call it whenever we want.
 //This middleware applies to each and every request, because no route was specified.
 
+//gives our middleware the ability to send static file to the browser, such as the overview.html file
 app.use(express.static(`${__dirname}/public`));
 
 app.use((req, res, next) => {

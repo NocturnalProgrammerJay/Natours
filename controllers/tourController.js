@@ -17,19 +17,72 @@ const Tour = require('../models/tourModel');
 // };
 
 //Asynchronous Code
-exports.getAllTours = (req, res) => {
+exports.getAllTours = async (req, res) => {
   //console.log(req.requestTime)
-  res.status(200).json({
-    status: 'success',
-    requestedAt: req.requestTime,
-    // results: tours.length,
-    // data: {
-    //   tours: tours,
-    // },
-  });
+  try {
+    // access the query string http://127.0.0.1:3000/api/v1/tours?duration=5&difficulty=easy&test=23 
+    // req.query = {duration = 5, difficulty = easy, & test = 23}
+    // console.log(req.query)
+    /**
+       *mongoDB filter method
+        const tours = await Tour.find({
+          duration: 5,
+          difficulty: 'easy'
+        })
+     */
+    /**
+       *Mongoose filter method
+          const tours = await Tour.find()
+          .where('duration')
+          .equals(5)
+          .where('difficulty')
+          .equals('easy')
+     */
+
+    // BUILD QUERY
+    const queryObj = {...req.query} // destructor the fields (ex: name: 'jamar') ...req.query object (key:value pairs) then wrap it {}, creating a unique copied object
+    const excludeFields = ['page', 'sort', 'limit', 'fields'] // an array of all fields we want to exclude from queryObj
+    excludeFields.forEach(el => delete queryObj[el])
+
+    const query = Tour.find(queryObj); 
+
+    // EXECUTE QUERY
+    const tours = await query
+
+    // http://127.0.0.1:3000/api/v1/tours?difficulty=easy&page=2&sort=1&limit=10
+    // { difficulty: 'easy', page: '2', sort: '1', limit: '10' } { difficulty: 'easy' }
+    // console.log(req.query, queryObj)
+
+    // SEND RESPONSE
+    res.status(200).json({
+      status: 'success',
+      results: tours.length,
+      data: tours,
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: 'fail',
+      message: err,
+    });
+  }
 };
 
-exports.getTour = (req, res) => {
+exports.getTour = async (req, res) => {
+  try {
+    //SAME AS - Tour.findOne({_id: req.params.id}) mongoDB
+    const tour = await Tour.findById(req.params.id); //mongoose
+
+    res.status(200).json({
+      status: 'success',
+      data: { tour },
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: 'fail',
+      message: err,
+    });
+  }
+
   // req.params is where all the variables in the url are stored ex: (/:id). The variables in the url are called parameters.
   // '/api/v1/tours/:id/:x/:y? the ? creates optional parameters and if the user does '/api/v1/tours/4/5?' we get back {id:4,x:5, y:undefined}
   // console.log(req.params)  {id:5}
@@ -62,7 +115,7 @@ exports.createTour = async (req, res) => {
   } catch (err) {
     res.status(400).json({
       status: 'fail',
-      message: 'invalid data data!',
+      message: err,
     });
   }
 
@@ -88,20 +141,39 @@ exports.createTour = async (req, res) => {
   // );
 };
 
-exports.updateTour = (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tour: '<Updated tour here...',
-    },
-  });
+exports.updateTour = async (req, res) => {
+  try {
+    const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    res.status(200).json({
+      status: 'success',
+      data: {
+        tour,
+      },
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: 'fail',
+      message: err,
+    });
+  }
 };
 
-exports.deleteTour = (req, res) => {
-  res.status(204).json({
-    status: 'success',
-    data: null, //the resource that was deleted, no longer exist.
-  });
+exports.deleteTour = async (req, res) => {
+  try {
+    await Tour.findByIdAndDelete(req.params.id);
+    res.status(204).json({
+      status: 'success',
+      data: null
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: 'fail',
+      message: err,
+    });
+  }
 };
 
 /**

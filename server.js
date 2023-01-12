@@ -1,14 +1,15 @@
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
+const mongoose = require('mongoose')
+const dotenv = require('dotenv')
 
 //This process is than global in the application and only needs to occur once and available in every file during the process.
 //config() - The command will now read our variables from the file and save them into nodeJS environment variables.
-dotenv.config({ path: './config.env' });
+dotenv.config({ path: './config.env' })
+const app = require('./app')
 
 const DB = process.env.DATABASE.replace(
   '<PASSWORD>',
   process.env.DATABASE_PASSWORD
-);
+)
 
 //HOST VERSION
 //connect method returns a promise and the second argument is for optional deprecated reasons
@@ -18,7 +19,7 @@ mongoose
     useCreateIndex: true,
     useFindAndModify: false,
   })
-  .then(() => console.log('DB connection successful!'));
+  .then(() => console.log('DB connection successful!'))
 
 // const testTour = new Tour({
 //   name: 'The Park Camper',
@@ -46,7 +47,7 @@ mongoose
 //     console.log(con.connections);
 //   })
 
-const app = require('./app');
+
 
 //console.log(process.env) // (process) nodejs variable
 
@@ -59,7 +60,7 @@ console.log(process.env)
 */
 
 // 4. Emitter - starts server
-const port = process.env.PORT;
+const port = process.env.PORT
 app.listen(port, () => {
-  console.log(`App running on port ${port}...`);
-});
+  console.log(`App running on port ${port}...`)
+})
