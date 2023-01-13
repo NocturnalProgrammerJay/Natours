@@ -1,5 +1,5 @@
 const Tour = require('../models/tourModel');
-
+const APIFeatures = require('../utils/apiFeatures')
 //2. ROUTE HANDLERS
 //Synchronous Code
 // const tours = JSON.parse(
@@ -16,6 +16,15 @@ const Tour = require('../models/tourModel');
 //   next();
 // };
 
+exports.aliasTopTours = (req, res, next) => {
+  console.log("HELLO");
+  req.query.limit = '5';
+  req.query.sort = '-ratingsAverage,price';
+  req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
+  next();
+}
+
+
 //Asynchronous Code
 exports.getAllTours = async (req, res) => {
   //console.log(req.requestTime)
@@ -23,31 +32,75 @@ exports.getAllTours = async (req, res) => {
     // access the query string http://127.0.0.1:3000/api/v1/tours?duration=5&difficulty=easy&test=23 
     // req.query = {duration = 5, difficulty = easy, & test = 23}
     // console.log(req.query)
-    /**
-       *mongoDB filter method
-        const tours = await Tour.find({
-          duration: 5,
-          difficulty: 'easy'
-        })
-     */
-    /**
-       *Mongoose filter method
-          const tours = await Tour.find()
-          .where('duration')
-          .equals(5)
-          .where('difficulty')
-          .equals('easy')
-     */
+    
+       //mongoDB filter method
+      //   const tours = await Tour.find({
+      //     duration: 5,
+      //     difficulty: 'easy'
+      //   })
+     
+    
+      //  Mongoose filter method
+      //     const tours = await Tour.find()
+      //     .where('duration')
+      //     .equals(5)
+      //     .where('difficulty')
+      //     .equals('easy')
+     
 
     // BUILD QUERY
-    const queryObj = {...req.query} // destructor the fields (ex: name: 'jamar') ...req.query object (key:value pairs) then wrap it {}, creating a unique copied object
-    const excludeFields = ['page', 'sort', 'limit', 'fields'] // an array of all fields we want to exclude from queryObj
-    excludeFields.forEach(el => delete queryObj[el])
+    // 1A) Filtering 
+    // const queryObj = {...req.query} // destructor the fields (ex: name: 'jamar') ...req.query object (key:value pairs) then wrap it {}, creating a unique copied object
+    // const excludeFields = ['page', 'sort', 'limit', 'fields'] // an array of all fields we want to exclude from queryObj
+    // excludeFields.forEach(el => delete queryObj[el])
 
-    const query = Tour.find(queryObj); 
+    // // 1B) Advanced filtering
+    // let queryStr = JSON.stringify(queryObj)
+    // //adds $ to the field of gte:5, coming from http://127.0.0.1:3000/api/v1/tours?difficulty[gte]=5 { gte:5 } we need { $gte:5 } to filter in mongodb
+    // //console.log(JSON.parse(queryStr));
+    // queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`)
+
+    // //const query = Tour.find(queryObj); 
+    // let query = Tour.find(JSON.parse(queryStr)); 
+
+    // // 2) SORTING
+    // if (req.query.sort){ // original object
+    //   const sortBy = req.query.sort.split(',').join(' ')
+    //   query = query.sort(sortBy)
+    //   //http://127.0.0.1:3000/api/v1/tours?sort=price,ratingsAverage
+    //   //how to sort by multiple params in mongodb, sort('price ratingsAverage')
+    // }else{
+    //   query = query.sort('-createdAt')
+    // }
+
+    // // 3) FIELD LIMITING
+    // if (req.query.fields){
+    //   // ex: http://127.0.0.1:3000/api/v1/tours?fields=name,duration,difficulty,price
+    //   // ex: http://127.0.0.1:3000/api/v1/tours?fields-=name,duration,difficulty,price the '-' means return all the data without these fields name, duration, difficulty, and price
+    //   const fields = req.query.fields.split(',').join(' ') // 
+    //   query = query.select(fields) //projection - selecting only specific fields:values from the object
+    // }else{
+    //   query = query.select('-__v') // '-' excluding only this field
+    // }
+
+    // // 4) Pagination
+    // const page = req.query.page * 1 || 1 //defaults to 1
+    // const limit = req.query.limit * 1 || 100 //defaults to 100
+    // const skip = (page - 1) * limit //if page = 3 we want results of (21 through 30) so 3 - 1 * 10 = 20, if we skip 20 then we are at result # 21
+
+    // // limit means amount of results we want in the query, skip means the amount of queries that should be skipped before querying data
+    // // /?page=2&limit=10 the user wants page 2 with 10 results. means results 1-10 is one page 1 and 11-20 is on page 2
+    // query = query.skip(skip).limit(limit)
+
+    // if(req.query.page){
+    //   const numTours = await Tour.countDocuments() //return number of documents
+    //   // if the number of documents that we skip are greater than the number of documents that exist then throw error
+    //   if (skip >= numTours) throw new Error(`This page does not exists`)
+    // }
 
     // EXECUTE QUERY
-    const tours = await query
+    const features = new APIFeatures(Tour.find(), req.query).filter().sort().paginate()
+    const tours = await features.query
 
     // http://127.0.0.1:3000/api/v1/tours?difficulty=easy&page=2&sort=1&limit=10
     // { difficulty: 'easy', page: '2', sort: '1', limit: '10' } { difficulty: 'easy' }
@@ -65,7 +118,9 @@ exports.getAllTours = async (req, res) => {
       message: err,
     });
   }
-};
+} 
+
+
 
 exports.getTour = async (req, res) => {
   try {
@@ -205,3 +260,101 @@ app.post('/', (req,res)=>{
 //     .route('/api/v1/tours')
 //     .get(getAllTours)
 //     .post(createTour)
+
+exports.getTourStats = async (req, res) => {
+  try{
+    //AGGREGATION PIPELINE
+    const stats = await Tour.aggregate([ //able to manipulate data, passes stages in the argument array and a object
+      {
+        $match: {
+          ratingsAverage: {$gte: 4.5}
+        }
+      },
+      {
+        $group: {
+          _id: { $toUpper:'$difficulty'}, // GROUP results for different fields. example: $difficulty - easy medium hard
+          numTours: {$sum: 1}, // for each document this num counter gets incremented
+          numRatings: { $sum: '$ratingQuantity'},
+          avgRating:{ $avg: '$ratingsAverage'},
+          avgPrice: { $avg: '$price'},
+          minPrice: { $min: '$price'},
+          maxPrice: { $max: '$price'},
+        }
+      },
+      {
+        $sort: {avgPrice: 1} //1 = ascending
+      },
+      // {
+      //   $match: {_id: { $ne: 'EASY'}} ne = not equal
+      // }
+    ]) 
+    res.status(200).json({
+      status: 'success',
+      data: {
+        stats,
+      },
+    });
+
+  }catch(err){
+    res.status(400).json({
+      status: 'fail',
+      message: err
+    })
+  }
+}
+
+exports.getMonthlyPlan = async (req, res) => {
+  try{
+    const year = req.params.year * 1
+    const plan = await Tour.aggregate([
+      {
+        $unwind: '$startDates' // $unwind - if a tour as an array of 3 startDates then this will create 3 tours, each with a specified create date
+      },
+      {
+        $match: {
+        startDates: { 
+          $gte: new Date(`${year}-01-01`),
+          $lte: new Date(`${year}-12-31`)
+          }
+        }
+      },
+      {
+        $group: {
+          _id: { $month: '$startDates'}, //month
+          numTourStarts: { $sum:1}, // how many tours in this month
+          tours: {$push: '$name'} //creates an array of tour names that match with each others month
+        }
+      },
+      {
+        $addFields: { month: '$_id' }
+      },
+      {
+        $project:{
+          _id: 0 //projection - gets rid of _id field. why? we use it to help our query search, but then after we wanna remove it
+        }
+      },
+      {
+        $sort: {
+          numTourStarts: -1  // 1 sec -1 desc
+        }
+      },
+      {
+        $limit: 12
+      }
+    ])
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        plan,
+      },
+    });
+
+  }catch(err){
+    res.status(400).json({
+      status: 'fail',
+      message: err
+    })
+  }
+}
+
