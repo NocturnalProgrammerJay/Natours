@@ -5,16 +5,20 @@
   "main": "app.js",
   "scripts": {
     "start:dev": "set NODE_ENV=development&& nodemon server",
-    "start:prod": "set NODE_ENV=production&& nodemon app"
+    "start:prod": "set NODE_ENV=production&& nodemon server",
+    "debug": "ndb server.js"
   },
   "author": "Jamar Andrade",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
     "mongoose": "^5.13.15",
     "morgan": "^1.10.0",
-    "slugify": "^1.6.5"
+    "slugify": "^1.6.5",
+    "validator": "^13.7.0"
   },
   "repository": {
     "type": "git",

@@ -1,6 +1,12 @@
 const mongoose = require('mongoose')
 const dotenv = require('dotenv')
 
+process.on('uncaughtException', err => {
+  console.log('UNCAUGHT EXCEPTION! 💥 Shutting down...')
+  console.log(err.name, err.message)
+
+})
+
 //This process is than global in the application and only needs to occur once and available in every file during the process.
 //config() - The command will now read our variables from the file and save them into nodeJS environment variables.
 dotenv.config({ path: './config.env' })
@@ -61,6 +67,17 @@ console.log(process.env)
 
 // 4. Emitter - starts server
 const port = process.env.PORT
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`App running on port ${port}...`)
 })
+
+process.on('unhandledRejection', err => {
+  console.log('UNHANDLED REJECTION! 💥 shutting down...')
+  console.log(err.name, err.message) 
+
+  // server finishes request that are pending or handling and then kill server.
+  server.close( () => {
+    process.exit(1) // 1 means uncalled exception and 0 means success 
+  })
+})
+
