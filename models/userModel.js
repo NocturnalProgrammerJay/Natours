@@ -1,65 +1,138 @@
-const mongoose = require('mongoose')
-const validator = require('validator')
-const bcrypt = require('bcryptjs')
+const crypto = require('crypto'); //built in node module
+const mongoose = require('mongoose');
+const validator = require('validator');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: [true, 'Please tell us your name']
-    },
-    email: {
-        type: String,
-        required: [true, 'Please provide your email'],
-        unique: true,
-        lowercase: true,
-        validate: [validator.isEmail, 'Please provide a valid email']
-    },
-    photo: String,
-    password: {
-        type: String,
-        required: [true, 'Please provide a password'],
-        minLength: 8,
-        select: false //hides itself in the output
-    },
-    passwordConfirm: {
-        type: String,
-        required: [true, 'Please confirm your password'],
-        validate: {
-            //  This only works on create or  save!
-            validator: function(el){
-                return el === this.password 
-            }
-        },
-        message: 'Passwords are not the same!', // err message
-        select: false //hides itself in the output
+  name: {
+    type: String,
+    required: [true, 'Please tell us your name!']
+  },
+  email: {
+    type: String,
+    required: [true, 'Please provide your email'],
+    unique: true,
+    lowercase: true,
+    validate: [validator.isEmail, 'Please provide a valid email']
+  },
+  photo: String,
+  role: {
+    type: String,
+    enum: ['user', 'guide', 'lead-guide', 'admin'],
+    default: 'user'
+  },
+  password: {
+    type: String,
+    required: [true, 'Please provide a password'],
+    minlength: 8,
+    select: false
+  },
+  passwordConfirm: {
+    type: String,
+    required: [true, 'Please confirm your password'],
+    validate: {
+      // This only works on CREATE and SAVE!!!
+      validator: function(el) {
+        return el === this.password;
+      },
+      message: 'Passwords are not the same!'
     }
+  },
+  passwordChangedAt: Date,
+  passwordResetToken: String,
+  passwordResetExpires: Date,
+  active: {
+    type: Boolean,
+    default: true,
+    select: false
+  }
+});
+
+userSchema.pre('save', async function(next) {
+  // Only run this function if password was actually modified
+  if (!this.isModified('password')) return next();
+
+  // Hash the password with cost of 12
+  this.password = await bcrypt.hash(this.password, 12);
+
+  // Delete passwordConfirm field
+  this.passwordConfirm = undefined;
+  next();
+});
+
+// userSchema.pre('save', function(next) {
+//   if (!this.isModified('password') || this.isNew) return next();
+
+//   this.passwordChangedAt = Date.now() - 1000;
+//   next();
+// });
+
+userSchema.pre(/^find/, function(next) {
+  // this points to the current query
+  this.find({ active: { $ne: false } });
+  next();
+});
+
+
+userSchema.pre('save', function(next){
+  if(!this.isModified('password') || this.isNew) return next()
+
+  this.passwordChangedAt = Date.now()-1000 //sometimes the token before the changed password timestamp has been created
+  next()
+}) 
+
+//we want this query to use every query that starts with find
+//regex to look for words that start with find, ex: findandupdate, findanddelete, findbyid, etc so we can skip any user with active set to false 
+userSchema.pre(/^find/, function(next){
+  // this points to the current query
+  this.find({active: {$ns: false}})
+  next()
 })
 
-//pre save document middleware
-userSchema.pre('save', async function(next){
-    // this.isModified checks if current document password has been modified.
-    if(!this.isModified('password')) return next() 
+userSchema.methods.correctPassword = async function(
+  candidatePassword,
+  userPassword
+) {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
 
-    // encryption - npm i bcryptjs, salt = random string that was generated. second parameter is the cost measure this intensive cpu operation will be
-    /**
-     *  Password salting is a technique to protect passwords stored in databases
-     *  by adding a string of 32 or more characters and then hashing them. 
-     * Salting prevents hackers who breach an enterprise environment
-     *  from reverse-engineering passwords and stealing them from the database.
-     */
-    this.password = await bcrypt.hash(this.password, 12)
-    // delete passwordConfirm field
-    this.passwordConfirm = undefined
-    next()
-})
+userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
 
-//instance method is available on all documents of a specific collection.
-// this = current document
-// candidatepassword is the original password not hashed and userpassword is the password thats hashed
-userSchema.methods.correctPassword = async function(candidatePassword, userPassword){
-    return await bcrypt.compare(candidatePassword, userPassword)
+    return JWTTimestamp < changedTimestamp;
+  }
+
+  // False means NOT changed
+  return false;
+};
+
+// userSchema.methods.createPasswordResetToken = function() {
+//   const resetToken = crypto.randomBytes(32).toString('hex');
+
+//   this.passwordResetToken = crypto
+//     .createHash('sha256')
+//     .update(resetToken)
+//     .digest('hex');
+
+//   console.log({ resetToken }, this.passwordResetToken);
+
+//   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+
+//   return resetToken;
+// };
+
+userSchema.methods.createPasswordResetToken = function(){
+  const resetToken  = crypto.randomBytes(32).toString('hex')// a password we give to the user
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex')// encrypted password
+  console.log({resetToken}, this.passwordResetToken)
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000
+  return resetToken
 }
 
-const User = mongoose.model('User', userSchema)
+const User = mongoose.model('User', userSchema);
 
-module.exports = User
+module.exports = User;

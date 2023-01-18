@@ -2,6 +2,13 @@
 const express = require('express')
 //Morgan module returns a function that reads http request and returns a message in the console.
 const morgan = require('morgan')
+//for global rate limit middleware
+const rateLimit = require('express-rate-limit')
+const helmet = require('helmet') //security HTTP headers - a collection of multiple middlewares
+const mongoSanitize = require('express-mongo-sanitize')
+const xss = require('xss-clean')
+const hpp = require('hpp')//http parameter pollution
+
 //OperationalErrorHandling Class
 const AppError = require('./utils/appError')
 
@@ -18,11 +25,26 @@ const app = express()
 //built function that can be found in a get repo. and its using its return function logger. Uses next() at the end.
 //This middleware logs get request object to the console. ex: GET /api/v1/tours 200 3.399 ms - 8682
 console.log(process.env.NODE_ENV)
+
+// 1) GLOBAL MIDDLEWARES
+//Set SECURITY HTTP HEADERS
+app.use(helmet())//return a function until its called
+
+//Development logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'))
 }
+//Controls how many API request at a time
+const limiter = rateLimit({
+  max: 100, //allows 100 request from a certain IP for one hour
+  windowMs: 60 * 60 * 1000,
+  message: 'Too many requests from this IP, please try again in an hour!'
+})
 
-app.use(express.json())
+app.use('/api',limiter)// applies limit to the all the routes that start with 'api'
+
+//Body parser, reading data from the body into req.body
+app.use(express.json({limit: '10kb'}))
 //express.json() returns a function and its added to the middleware stack. And be able to create our own middleware function.
 // middleware = express.json(): a function that can modify the incoming request data. Its called middleware because it
 //stands between receiving the request and sending the response. Its just a step that the request goes through while its being processed.
@@ -30,6 +52,18 @@ app.use(express.json())
 //creating a middleware function, third parameter is the express.next object
 //express knows we are defining a middleware here and we can then call it whenever we want.
 //This middleware applies to each and every request, because no route was specified.
+
+// Data sanitization against NoSQL query injection
+app.use(mongoSanitize()) // returns a middleware function - prevents mongoDB query injections of the request object and filter them out
+
+// Data sanitization against XSS
+app.use(xss())// returns a middleware function - clean any user input from malicious HTML code. ex: hacker inserting html w JS code attached to it
+
+// Prevent parameter pollution - {{URL}}api/v1/tours/sort=duration&sort=name - creates a sort array query string and we dont want the user doing this to break code.
+app.use(hpp({ // clears up query string and uses the last duplicate query string, unless specified in the whitelist
+  whitelist: ['duration', 'ratingsQuantity', 'ratingsAverage', 'price','difficulty', 'maxGroupSize']
+
+}))
 
 //gives our middleware the ability to send static file to the browser, such as the overview.html file
 app.use(express.static(`${__dirname}/public`))
@@ -40,7 +74,9 @@ app.use(express.static(`${__dirname}/public`))
 //   next()
 // })
 
+//test middleware
 app.use((req, res, next) => {
+  //console.log(req.requestTime)
   req.requestTime = new Date().toISOString()
   next()
 })
