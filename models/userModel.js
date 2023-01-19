@@ -85,7 +85,7 @@ userSchema.pre('save', function(next){
 //regex to look for words that start with find, ex: findandupdate, findanddelete, findbyid, etc so we can skip any user with active set to false 
 userSchema.pre(/^find/, function(next){
   // this points to the current query
-  this.find({active: {$ns: false}})
+  this.find({active: {$ne: false}})
   next()
 })
 

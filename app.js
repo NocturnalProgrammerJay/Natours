@@ -1,3 +1,4 @@
+/* eslint-disable node/no-extraneous-require */
 // Express is a function that will add a bunch of methods to the app variable.
 const express = require('express')
 //Morgan module returns a function that reads http request and returns a message in the console.
@@ -17,6 +18,7 @@ const globalErrorHandler = require(`./controllers/errorController`)
 //Routers
 const tourRouter = require('./routes/tourRoutes')
 const userRouter = require('./routes/userRoutes')
+const reviewRouter = require('./routes/reviewRoutes')
 
 //abstract layer(higher level) of nodejs - framework
 const app = express()
@@ -85,6 +87,7 @@ app.use((req, res, next) => {
 // Mounting the router: mounting a new router 'tourRouter' on a route '/api/v1/tours'
 app.use('/api/v1/tours', tourRouter)
 app.use('/api/v1/users', userRouter)
+app.use('/api/v1/reviews', reviewRouter)
 
 //Handles all https request and all other routes
 app.all('*', (req, res, next) =>{
