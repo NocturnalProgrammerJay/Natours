@@ -1,7 +1,7 @@
 const Tour = require('../models/tourModel');
 //const APIFeatures = require('../utils/apiFeatures')
 const catchAsync = require('../utils/catchAsync')
-//const AppError = require('../utils/appError')
+const AppError = require('../utils/appError')
 const factory = require('./handlerFactory')
 
 //2. ROUTE HANDLERS
@@ -338,3 +338,67 @@ exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
     });
 })
 
+exports.getToursWithin = catchAsync(async (req, res, next) =>{
+  const {distance, latlng, unit} = req.params
+  const [lat, lng] = latlng.split(',') //destructuring the array
+
+  const radius = unit === 'mi' ? distance / 3963.2: distance / 6378.1 //miles or kilometers
+  
+  if(!lat || !lng){
+    next(new AppError(`Please provide latitude and longitude in the format lat, lng`, 400))
+  }
+
+  const tours = await Tour.find({
+    startLocation: {$geoWithin: {$centerSphere: [[lng, lat], radius] }}
+  })
+
+  console.log(distance, lat, lng, unit)
+
+  res.status(200).json({
+    status: 'success',
+    results: tours.length,
+    data: {
+      data: tours
+    }
+  })
+})
+
+exports.getDistances = catchAsync(async(req, res, next) => {
+  const {latlng, unit} = req.params
+  const [lat, lng] = latlng.split(',') //destructuring the array
+
+  const multiplier = unit === 'mi' ? 0.000621371:0.001
+  
+  if(!lat || !lng){
+    next(new AppError(`Please provide latitude and longitude in the format lat, lng`, 400))
+  }
+
+  //GeoSpacing aggregation - return tours closest in asc based on users entered lat and lng.
+  const distances = await Tour.aggregate([
+    {
+      //GeoNear always needs to be the first one in the pipeline stage. At least one field(startLocation) needs a geoSpacing index.
+      //It will use that field to perform the calculation, but if multiple indexes with geoSpacing then you need to use the keys parameters in order to define the field that you want to use for calculations.
+      $geoNear: { 
+        near: {
+          type: 'Point',
+          coordinates: [lng*1, lat*1]
+        },
+        distanceField: 'distance',
+        distanceMultiplier: multiplier  //converting miles to meters 
+      }
+    },
+    {
+      $project: { //only want these fields to show in query (projection)
+        distance: 1,
+        name: 1,
+      }
+    }
+  ])
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      data: distances
+    }
+  })
+})

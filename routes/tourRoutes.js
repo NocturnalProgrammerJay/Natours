@@ -20,17 +20,24 @@ router.route('/top-5-cheap')
 router.route('/tour-stats')
   .get(tourController.getTourStats)
 
-  router.route('/monthly-plan/:year')
-  .get(tourController.getMonthlyPlan)
+router.route('/monthly-plan/:year')
+  .get(authController.protect, authController.restrictTo('admin', 'lead-guide'), tourController.getMonthlyPlan)
+
 router
   .route('/')
-  .get(authController.protect, tourController.getAllTours)
-  .post(tourController.createTour)
+  .get(tourController.getAllTours)
+  .post(authController.protect, authController.restrictTo('admin', 'lead-guide'), tourController.createTour)
+
+router.route('/tours-within/:distance/center/:latlng/unit/:unit').get(tourController.getToursWithin)
+//tours-distance?distance=233,center=40, 45&unit=mi
+
+//compare the distance of a certain tour to all the others
+router.route('/distances/:latlng/unit/:unit').get(tourController.getDistances)
 
 router
   .route('/:id')
   .get(tourController.getTour)
-  .patch(tourController.updateTour)
+  .patch(authController.protect, authController.restrictTo('admin', 'lead-guide'), tourController.updateTour)
   .delete(authController.protect, authController.restrictTo('admin', 'lead-guide'), tourController.deleteTour)
   
 

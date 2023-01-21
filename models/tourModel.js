@@ -118,6 +118,17 @@ const tourSchema = new mongoose.Schema(
   }
 )
 
+// Performance queries. mongo provided only the documents that in asc order according to price, when user query price based on value, it probably does a binary search
+// 1 - means asc order, -1 dsc order, field indexing.
+// tourSchema.index({price: 1})
+
+//compound index
+tourSchema.index({ratingsAverage: -1, price: 1})
+
+// the slug will query for tours
+tourSchema.index({slug: 1}) 
+tourSchema.index({startLocation: '2dsphere'})
+
 //executes every time we get some data from a database. 
 //used a regular function because an arrow this keyword doesn't have one and its undefined.
 //cannot use this in a query because it is technically not part of the database. 
@@ -191,12 +202,13 @@ tourSchema.post(/^find/, function(docs, next){
 // AGGREGATION MIDDLEWARE 
 //this = aggregation object and has many properties
 //this.pipeline is any an array of aggregated stages (in toursController getMonthlyPlan -> [{{$match: [Object]},{etc}, {etc}}])
-tourSchema.pre('aggregate', function(next){
-   //add element in beginning of an array. adding another stage
-   //removing from the doc all the outputs of secret source set to true.
-  this.pipeline().unshift({$match:{ secretTour: {$ne: true}} })
-  next()
-})
+// tourSchema.pre('aggregate', function(next){
+//    //add element in beginning of an array. adding another stage
+//    //removing from the doc all the outputs of secret source set to true.
+//   this.pipeline().unshift({$match:{ secretTour: {$ne: true}} })
+//   console.log(this.pipeline())
+//   next()
+// })
 
  
 const Tour = mongoose.model('Tour', tourSchema)

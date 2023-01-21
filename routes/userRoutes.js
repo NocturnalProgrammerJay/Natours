@@ -4,17 +4,24 @@ const authController = require('../controllers/authController')
 
 const router = express.Router()
 
-// Doesn't follows REST philosophy
 router.post('/signup', authController.signup)
-
 router.post('/login', authController.login)
 router.post('/forgotPassword', authController.forgotPassword )
 router.patch('/resetPassword/:token', authController.resetPassword)
-router.patch('/updateMyPassword', authController.protect, authController.updatePassword)
-router.patch('/updateMe', authController.protect, userController.updateMe)
-router.delete('/deleteMe', authController.protect, userController.deleteMe)
 
-// Follows REST philosophy
+// This we be called before all the routes after this point, because middleware runs in sequence. 
+router.use(authController.protect)
+
+router.patch('/updateMyPassword', authController.updatePassword)
+
+router.get('/me', userController.getMe, userController.getUser)
+
+router.patch('/updateMe', userController.updateMe)
+router.delete('/deleteMe', userController.deleteMe)
+
+//Restrict routes after this point for admin
+router.use(authController.restrictTo('admin'))
+
 router
   .route('/')
   .get(userController.getAllUsers)

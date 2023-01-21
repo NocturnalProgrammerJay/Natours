@@ -13,9 +13,12 @@ const filterObj =  (obj, ...allowedFields) => {
     })
     return newObj
 }
-
-
-//USERS
+//we want to get the id of the logged-in user.
+//this gets called before getOne
+exports.getMe = (req, res, next)=>{ 
+    req.params.id = req.user.id
+    next()
+}
 
 
 
