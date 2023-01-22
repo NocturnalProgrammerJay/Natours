@@ -9,6 +9,7 @@ const helmet = require('helmet') //security HTTP headers - a collection of multi
 const mongoSanitize = require('express-mongo-sanitize')
 const xss = require('xss-clean')
 const hpp = require('hpp')//http parameter pollution
+const path = require('path')//used to manipulate path names
 
 //OperationalErrorHandling Class
 const AppError = require('./utils/appError')
@@ -19,9 +20,19 @@ const globalErrorHandler = require(`./controllers/errorController`)
 const tourRouter = require('./routes/tourRoutes')
 const userRouter = require('./routes/userRoutes')
 const reviewRouter = require('./routes/reviewRoutes')
+const viewRouter = require('./routes/viewRoutes')
 
 //abstract layer(higher level) of nodejs - framework
 const app = express()
+
+//express sets an engine
+app.set('view engine', 'pug') // npm i pug - gives us template engines
+//Defines which folder the view is located in.
+app.set('views', path.join(__dirname, 'views'))
+
+//gives our middleware the ability to send static file to the browser, such as the overview.html file
+//app.use(express.static(`${__dirname}/public`))
+app.use(express.static(path.join(__dirname, 'public')))
 
 // 1. Middleware - typically have all of them on the app.js
 //built function that can be found in a get repo. and its using its return function logger. Uses next() at the end.
@@ -67,9 +78,6 @@ app.use(hpp({ // clears up query string and uses the last duplicate query string
 
 }))
 
-//gives our middleware the ability to send static file to the browser, such as the overview.html file
-app.use(express.static(`${__dirname}/public`))
-
 // app.use((req, res, next) => {
 //   console.log('hello from the middleware')
    //Must call .next() or the middleware will not move on and create an infinite loop.
@@ -83,8 +91,11 @@ app.use((req, res, next) => {
   next()
 })
 
-//parent route/ middleware functions
+// parent route/ middleware functions
 // Mounting the router: mounting a new router 'tourRouter' on a route '/api/v1/tours'
+
+
+app.use('/', viewRouter)
 app.use('/api/v1/tours', tourRouter)
 app.use('/api/v1/users', userRouter)
 app.use('/api/v1/reviews', reviewRouter)
@@ -104,7 +115,7 @@ app.all('*', (req, res, next) =>{
 
   // express assume whatever is passed into next is an error always and skip other middleware in the stack,
   // and pass the err into the global middleware and execute it
-  console.log("errorHELLO")
+  console.log("THIS URL ROUTE IS INVALID OR DOESNT NOT EXIST")
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404))
 })
  
