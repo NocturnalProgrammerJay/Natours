@@ -10,6 +10,7 @@ const mongoSanitize = require('express-mongo-sanitize')
 const xss = require('xss-clean')
 const hpp = require('hpp')//http parameter pollution
 const path = require('path')//used to manipulate path names
+const cookieParser = require('cookie-parser') //npm i cookie-parser
 
 //OperationalErrorHandling Class
 const AppError = require('./utils/appError')
@@ -58,6 +59,8 @@ app.use('/api',limiter)// applies limit to the all the routes that start with 'a
 
 //Body parser, reading data from the body into req.body
 app.use(express.json({limit: '10kb'}))
+app.use(cookieParser())
+
 //express.json() returns a function and its added to the middleware stack. And be able to create our own middleware function.
 // middleware = express.json(): a function that can modify the incoming request data. Its called middleware because it
 //stands between receiving the request and sending the response. Its just a step that the request goes through while its being processed.
@@ -88,12 +91,12 @@ app.use(hpp({ // clears up query string and uses the last duplicate query string
 app.use((req, res, next) => {
   //console.log(req.requestTime)
   req.requestTime = new Date().toISOString()
+  console.log(req.cookies)
   next()
 })
 
 // parent route/ middleware functions
 // Mounting the router: mounting a new router 'tourRouter' on a route '/api/v1/tours'
-
 
 app.use('/', viewRouter)
 app.use('/api/v1/tours', tourRouter)
@@ -110,8 +113,6 @@ app.all('*', (req, res, next) =>{
   // const err = new Error(`Can't find ${req.originalUrl} on this server!`)
   // err.status = 'fail'
   // err.statusCode = 404
-
-
 
   // express assume whatever is passed into next is an error always and skip other middleware in the stack,
   // and pass the err into the global middleware and execute it

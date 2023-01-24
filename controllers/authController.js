@@ -25,6 +25,7 @@ const createSendToken = (user, statusCode, res) => {
     //Remove the password from the output
     res.password = undefined
 
+    //sends a cookie to the client
     res.status(statusCode).json({
         status: 'success',
         token,
@@ -46,6 +47,8 @@ exports.signup = catchAsync(async (req,res,next) => {
 })
 
 exports.login = catchAsync(async(req, res, next) => {
+
+
     const {email, password} = req.body
 
     // 1) check if email and password exist
@@ -72,6 +75,8 @@ exports.protect = catchAsync(async (req, res, next) => {
     req.headers.authorization.startsWith('Bearer')
   ) {
     token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies.jwt){
+    token = req.cookies.jwt
   }
 
   if (!token) {
@@ -106,6 +111,30 @@ exports.protect = catchAsync(async (req, res, next) => {
   next();
 });
 
+//Only for rendered pages, no errors
+exports.isLoggedIn = catchAsync(async (req, res, next) => {
+  if (req.cookies.jwt){
+    // 1) Verify token
+    const decoded = await promisify(jwt.verify)(req.cookies.jwt, process.env.JWT_SECRET);
+
+    // 2) Check if user still exists
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser) {
+      return next();
+    }
+
+    // 3) Check if user changed password after the token was issued
+    if (currentUser.changedPasswordAfter(decoded.iat)) {
+      return next();
+    }
+
+    // THERE IS A LOGGED USER
+    res.locals.user = currentUser;
+    return next();
+  }
+
+  next()
+});
 
 //Restrict certain routes to certain user roles: Authorization
 /**
@@ -197,3 +226,4 @@ exports.updatePassword = catchAsync(async(req, res, next) => {
     // 4) log user in, send JWT
     createSendToken(user,200,res)
 })
+
