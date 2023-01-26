@@ -59,6 +59,8 @@ app.use('/api',limiter)// applies limit to the all the routes that start with 'a
 
 //Body parser, reading data from the body into req.body
 app.use(express.json({limit: '10kb'}))
+// parse data thats coming from a html form, form send data to the server is called urlencoded.
+app.use(express.urlencoded({extended: true, limit: '10kb'}))
 app.use(cookieParser())
 
 //express.json() returns a function and its added to the middleware stack. And be able to create our own middleware function.
@@ -91,7 +93,7 @@ app.use(hpp({ // clears up query string and uses the last duplicate query string
 app.use((req, res, next) => {
   //console.log(req.requestTime)
   req.requestTime = new Date().toISOString()
-  console.log(req.cookies)
+  //console.log(req.cookies)
   next()
 })
 
@@ -116,7 +118,6 @@ app.all('*', (req, res, next) =>{
 
   // express assume whatever is passed into next is an error always and skip other middleware in the stack,
   // and pass the err into the global middleware and execute it
-  console.log("THIS URL ROUTE IS INVALID OR DOESNT NOT EXIST")
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404))
 })
  

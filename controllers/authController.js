@@ -5,6 +5,7 @@ const User = require('../models/userModel')
 const catchAsync = require('../utils/catchAsync')
 const AppError = require('../utils/appError')
 const sendEmail = require('../utils/email')
+const Email = require('../utils/email')
 
 const signToken = id => jwt.sign({id: id}, process.env.JWT_SECRET,{ expiresIn: process.env.JWT_EXPIRES_IN }) //uses the id, secret to generate a random jwt string
 
@@ -36,36 +37,44 @@ const createSendToken = (user, statusCode, res) => {
 }
 
 exports.signup = catchAsync(async (req,res,next) => {
-    //const newUser = await User.create(req.body) new document based off of the model schema
+    const newUser = await User.create(req.body) //new document based off of the model schema
+
+    const url = `${req.protocol}://${req.get('host')}/me`
+    console.log(url)
+    await new Email(newUser, url).sendWelcome()
+
     // json web token npm i jsonwebtoken
-    
-    //create a schema for users login - setting up user credentials
-    const newUser = await User.create(req.body)
     createSendToken(newUser,201,res)
     //jwt.sign() first param takes a object/data as the payload, second param is the secret (string), last argument is for options
     //_id comes from making a copy of the mongo generated id in the code somewhere
 })
 
 exports.login = catchAsync(async(req, res, next) => {
-
-
     const {email, password} = req.body
 
     // 1) check if email and password exist
     if (!email || !password){
         return next(new AppError('Please provide email and password!', 400))
     }
-
     // 2) check if user exists && password is correct
     const user = await User.findOne({email}).select('+password') // how to select something thats not selected.. in model it was set to false.
 
+    console.log(password, user.password)
     if(!user || !await user.correctPassword(password, user.password)){ //second argument is checking is the passwords match up
         return next(new AppError('Incorrect email or password', 401))
     }
-
+    console.log("came back true")
     // 3) if everything ok, send token to client - the token 
     createSendToken(user,201,res)
 })
+
+exports.logout = (req, res) => {
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now()+10*1000),
+    httpOnly: true
+  })
+  res.status(200).json({status: 'success'})
+}
 
 exports.protect = catchAsync(async (req, res, next) => {
   // 1) Getting token and check of it's there
@@ -108,33 +117,41 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // GRANT ACCESS TO PROTECTED ROUTE
   req.user = currentUser;
+  res.locals.user = currentUser;
   next();
 });
 
 //Only for rendered pages, no errors
-exports.isLoggedIn = catchAsync(async (req, res, next) => {
-  if (req.cookies.jwt){
-    // 1) Verify token
-    const decoded = await promisify(jwt.verify)(req.cookies.jwt, process.env.JWT_SECRET);
+exports.isLoggedIn = async (req, res, next) => {
+  try{
+    if (req.cookies.jwt){
+      // 1) Verify token
+      const decoded = await promisify(jwt.verify)(req.cookies.jwt, process.env.JWT_SECRET);
+      
+      // 2) Check if user still exists
+      const currentUser = await User.findById(decoded.id);
+      if (!currentUser) {
+        return next();
+      }
 
-    // 2) Check if user still exists
-    const currentUser = await User.findById(decoded.id);
-    if (!currentUser) {
+      // 3) Check if user changed password after the token was issued
+      if (currentUser.changedPasswordAfter(decoded.iat)) {
+        return next();
+      }
+      
+      // THERE IS A LOGGED USER
+      /**
+       * res.locals An object that contains response local variables scoped to the request, 
+       * and therefore available only to the view(s) rendered during that request / response cycle (if any). 
+       */
+      res.locals.user = currentUser;
       return next();
     }
-
-    // 3) Check if user changed password after the token was issued
-    if (currentUser.changedPasswordAfter(decoded.iat)) {
-      return next();
-    }
-
-    // THERE IS A LOGGED USER
-    res.locals.user = currentUser;
-    return next();
+  }catch(err){
+    return next()
   }
-
   next()
-});
+};
 
 //Restrict certain routes to certain user roles: Authorization
 /**
@@ -159,18 +176,11 @@ exports.forgotPassword = catchAsync(async(req, res, next) => {
     // 2) Generate the random reset token
     const resetToken = user.createPasswordResetToken()
     await user.save({validateBeforeSave: false}) //deactivate all the validators im the schema 
-
-    // 3) Send it to user's email
-    const resetURL = `${req.protocol}://${req.get('host')}/api/v1/users/resetPassword/${resetToken}`
-    const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm
-     to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`
-
+    
     try{
-        await sendEmail({
-                email: user.email,
-                subject: 'Your password reset token (valid for 10 min)',
-                message
-            })
+      // 3) Send it to user's email
+      const resetURL = `${req.protocol}://${req.get('host')}/api/v1/users/resetPassword/${resetToken}`
+      await new Email(user,resetURL).sendPasswordReset()
 
         res.status(200).json({
             status: 'success',

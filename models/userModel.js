@@ -15,7 +15,10 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     validate: [validator.isEmail, 'Please provide a valid email']
   },
-  photo: String,
+  photo: {
+    type: String,
+    default: 'default.jpg'
+  },
   role: {
     type: String,
     enum: ['user', 'guide', 'lead-guide', 'admin'],
@@ -50,28 +53,29 @@ const userSchema = new mongoose.Schema({
 
 
 // /**
-//  * The user data we use include their own encrypted data. OR comment it out then run node ./dev-data/data/import-dev-data --delete
+//  * --------------------------------------------IF DB PASS DOESNT MATCH MONGO PASS, clear DB and comment these middleware out then import from db again.
 //  * node ./dev-data/data/import-dev-data --import
 //  * then uncomment this out the 2 middleware functions below
 //  */
-// userSchema.pre('save', async function(next) {
-//   // Only run this function if password was actually modified
-//   if (!this.isModified('password')) return next();
+userSchema.pre('save', async function(next) {
+  // Only run this function if password was actually modified
+  if (!this.isModified('password')) return next();
 
-//   // Hash the password with cost of 12
-//   this.password = await bcrypt.hash(this.password, 12);
+  // Hash the password with cost of 12
+  console.log("HELLO FROM SAVE MIDDLEWARE on usermodels file")
+  this.password = await bcrypt.hash(this.password, 12);
 
-//   // Delete passwordConfirm field
-//   this.passwordConfirm = undefined;
-//   next();
-// });
+  // Delete passwordConfirm field
+  this.passwordConfirm = undefined;
+  next();
+});
 
-// userSchema.pre('save', function(next) {
-//   if (!this.isModified('password') || this.isNew) return next();
+userSchema.pre('save', function(next) {
+  if (!this.isModified('password') || this.isNew) return next();
 
-//   this.passwordChangedAt = Date.now() - 1000;
-//   next();
-// });
+  this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
 
 
 userSchema.pre(/^find/, function(next) {
@@ -80,13 +84,6 @@ userSchema.pre(/^find/, function(next) {
   next();
 });
 
-
-userSchema.pre('save', function(next){
-  if(!this.isModified('password') || this.isNew) return next()
-
-  this.passwordChangedAt = Date.now()-1000 //sometimes the token before the changed password timestamp has been created
-  next()
-}) 
 
 //we want this query to use every query that starts with find
 //regex to look for words that start with find, ex: findandupdate, findanddelete, findbyid, etc so we can skip any user with active set to false 
@@ -103,6 +100,7 @@ userSchema.methods.correctPassword = async function(
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 
+
 userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
   if (this.passwordChangedAt) {
     const changedTimestamp = parseInt(
@@ -117,26 +115,13 @@ userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
   return false;
 };
 
-// userSchema.methods.createPasswordResetToken = function() {
-//   const resetToken = crypto.randomBytes(32).toString('hex');
-
-//   this.passwordResetToken = crypto
-//     .createHash('sha256')
-//     .update(resetToken)
-//     .digest('hex');
-
-//   console.log({ resetToken }, this.passwordResetToken);
-
-//   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
-
-//   return resetToken;
-// };
-
 userSchema.methods.createPasswordResetToken = function(){
   const resetToken  = crypto.randomBytes(32).toString('hex')// a password we give to the user
+
   this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex')// encrypted password
-  console.log({resetToken}, this.passwordResetToken)
+
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000
+
   return resetToken
 }
 

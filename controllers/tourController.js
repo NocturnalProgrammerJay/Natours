@@ -1,8 +1,67 @@
+const multer = require('multer') // Multer is a very popular middleware to handle multi-part form data, which is a form of coding that's used to upload files from a form. npm i multer@1.4.1
+const sharp = require('sharp')// resizes images
 const Tour = require('../models/tourModel');
 //const APIFeatures = require('../utils/apiFeatures')
 const catchAsync = require('../utils/catchAsync')
 const AppError = require('../utils/appError')
 const factory = require('./handlerFactory')
+
+const multerStorage = multer.memoryStorage();//stores images in memory as a buffer
+
+const multerFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image')) {
+    cb(null, true);
+  } else {
+    cb(new AppError('Not an image! Please upload only images.', 400), false);
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter
+});
+
+//upload.single('image')  1 file. Becomes req.file
+//upload.array('image', 5) multiple files w same name. Becomes req.files.
+//postman under tour and update tour, form-data
+exports.uploadTourImages = upload.fields([ // mix of files
+  {name: 'imageCover', maxCount: 1},
+  {name: 'images', maxCount: 3}
+])
+
+exports.resizeTourImages = catchAsync(async(req, res, next)=>{
+  if (!req.files.imageCover || !req.files.images) return next();
+
+  // 1) Cover image
+  req.body.imageCover = `tour-${req.params.id}-${Date.now()}-cover.jpeg`;
+  await sharp(req.files.imageCover[0].buffer)
+    .resize(2000, 1333)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })//compress file 
+    .toFile(`public/img/tours/${req.body.imageCover}`);
+
+  // 2) Images
+
+  req.body.images = []
+
+  
+  await Promise.all(
+    req.files.images.map(async(file, i)=>{
+    const filename = `tour-${req.params.id}-${Date.now()}-${i+1}.jpeg`
+
+    await sharp(file.buffer)
+    .resize(2000, 1333)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })//compress file 
+    .toFile(`public/img/tours/${filename}`);
+    
+    req.body.images.push(filename)
+    })
+  )
+
+  next();
+})
+
 
 //2. ROUTE HANDLERS
 //Synchronous Code
@@ -351,8 +410,6 @@ exports.getToursWithin = catchAsync(async (req, res, next) =>{
   const tours = await Tour.find({
     startLocation: {$geoWithin: {$centerSphere: [[lng, lat], radius] }}
   })
-
-  console.log(distance, lat, lng, unit)
 
   res.status(200).json({
     status: 'success',

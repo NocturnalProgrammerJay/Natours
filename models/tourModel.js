@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 const slugify = require('slugify')
-//const User = require('./userModel')
+const User = require('./userModel')
 //const validator = require('validator')
 //Creating schema
 //VALIDATORS ARE A GOLDEN RULE
@@ -152,13 +152,13 @@ tourSchema.pre('save', function(next){
   next()
 })
 
-// //Create embedded guides in tour document
-// tourSchema.pre('save', async function(next) {
-//   //returns an array of promises - mapping through each element in the guide field from the sent data from user. want array of user ids for this tour doc guide object
-//   const guidesPromises = this.guides.map(async id => await User.findById(id)) //.findById is an async function so must be awaited.
-//   this.guides = await Promise.all(guidesPromises) //runs all promises at the same time, so our function must be async to await the promises in the array.
-//   next()
-// })
+//Create embedded guides in tour document
+tourSchema.pre('save', async function(next) {
+  //returns an array of promises - mapping through each element in the guide field from the sent data from user. want array of user ids for this tour doc guide object
+  const guidesPromises = this.guides.map(async id => await User.findById(id)) //.findById is an async function so must be awaited.
+  this.guides = await Promise.all(guidesPromises) //runs all promises at the same time, so our function must be async to await the promises in the array.
+  next()
+})
  
 //CREATE NEW TOUR
 // tourSchema.pre('save', function(next) {
