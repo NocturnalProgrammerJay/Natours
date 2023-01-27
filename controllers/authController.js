@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken')
 const User = require('../models/userModel')
 const catchAsync = require('../utils/catchAsync')
 const AppError = require('../utils/appError')
-const sendEmail = require('../utils/email')
+//const sendEmail = require('../utils/email')
 const Email = require('../utils/email')
 
 const signToken = id => jwt.sign({id: id}, process.env.JWT_SECRET,{ expiresIn: process.env.JWT_EXPIRES_IN }) //uses the id, secret to generate a random jwt string
@@ -40,7 +40,7 @@ exports.signup = catchAsync(async (req,res,next) => {
     const newUser = await User.create(req.body) //new document based off of the model schema
 
     const url = `${req.protocol}://${req.get('host')}/me`
-    console.log(url)
+
     await new Email(newUser, url).sendWelcome()
 
     // json web token npm i jsonwebtoken
@@ -59,11 +59,9 @@ exports.login = catchAsync(async(req, res, next) => {
     // 2) check if user exists && password is correct
     const user = await User.findOne({email}).select('+password') // how to select something thats not selected.. in model it was set to false.
 
-    console.log(password, user.password)
     if(!user || !await user.correctPassword(password, user.password)){ //second argument is checking is the passwords match up
         return next(new AppError('Incorrect email or password', 401))
     }
-    console.log("came back true")
     // 3) if everything ok, send token to client - the token 
     createSendToken(user,201,res)
 })

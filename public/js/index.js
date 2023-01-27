@@ -3,6 +3,7 @@ import '@babel/polyfill' //makes new es6 js work in older js browsers. npm i @ba
 import {displayMap} from './mapbox'
 import {login, logout } from './login'
 import {updateSettings} from './updateSettings'
+import { bookTour } from './stripe'
 
 console.log('HELLO FROM PARCEL')
 // DOM ELEMENTS
@@ -11,6 +12,7 @@ const loginForm = document.querySelector('.form--login')
 const logOutBtn = document.querySelector('.nav__el--logout')
 const userDataForm = document.querySelector('.form-user-data') 
 const userPasswordForm = document.querySelector('.form-user-password') 
+const bookBtn = document.getElementById('book-tour')
 
 // DELEGATION
 if(mapBox){
@@ -72,5 +74,12 @@ if (userPasswordForm)
     document.getElementById('password').value = '';
     document.getElementById('password-confirm').value = '';
   });
+
+  if(bookBtn)
+    bookBtn.addEventListener('click', e => {
+      e.target.textContent = 'Processing...'
+      const {tourId} = e.target.dataset
+      bookTour(tourId)
+    })
 
 
