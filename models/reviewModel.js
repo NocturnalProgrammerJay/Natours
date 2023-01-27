@@ -93,7 +93,6 @@ reviewSchema.post('save', function(){
 //when the user queries the db, ratingsAverage will update if the user updates or remove a tour
 reviewSchema.pre(/^findOneAnd/, async function(next){
   this.r = await this.findOne()//query of multi tuples findOneAnd ... operations in the current document
-  console.log(this.r)
   next()
 })
 

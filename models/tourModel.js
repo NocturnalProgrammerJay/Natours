@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 const slugify = require('slugify')
-//const User = require('./userModel')
+const User = require('./userModel')
 //const validator = require('validator')
 //Creating schema
 //VALIDATORS ARE A GOLDEN RULE
@@ -152,6 +152,9 @@ tourSchema.pre('save', function(next){
   next()
 })
 
+/**
+ * -----------------------------------> KEEP THESE 3 middleware commented below.
+ */
 // //Create embedded guides in tour document
 // tourSchema.pre('save', async function(next) {
 //   //returns an array of promises - mapping through each element in the guide field from the sent data from user. want array of user ids for this tour doc guide object
