@@ -12,6 +12,7 @@ const hpp = require('hpp')//http parameter pollution
 const path = require('path')//used to manipulate path names
 const cookieParser = require('cookie-parser') //npm i cookie-parser
 const compression = require('compression')// compresses all responses. ex: send text response to a client, a compresses package makes that text dramatically compressed.
+const cors =require('cors')//cross origin resource sharing. So other domains can use our API. Middleware function
 
 //OperationalErrorHandling Class
 const AppError = require('./utils/appError')
@@ -34,6 +35,26 @@ app.enable('trust proxy')
 app.set('view engine', 'pug') // npm i pug - gives us template engines
 //Defines which folder the view is located in.
 app.set('views', path.join(__dirname, 'views'))
+
+//Implement CORS
+app.use(cors()) // GLOBALLY: header(access-allow-origin), works for simple request such as GET and POST request.
+//how to only allow a certain domain to make request to an api: api.natours.com, front-end natours
+// app.use(cors({
+//   origin: 'https://www.natours.com'
+// }))
+
+/**
+ * On the other hand, we have so-called non-simple requests. And these are put, patch and delete requests, or also requests that send cookies
+ * or use nonstandard headers. And these non-simple requests, they require a so-called preflight phase. So whenever there is a non-simple request,
+ * the browser will then automatically issue the preflight phase, and this is how that works. So before the real request actually happens,
+ * and let's say a delete request, the browser first does an options request in order to figure out if the actual request is safe to send.
+ * And so what that means for us developers is that on our server we need to actually respond to that options request. And options is really just another HTTP method, 
+ * so just like get, post or delete, all right? So basically when we get one of these options requests on our server, we then need to send back 
+ * the same Access-Control-Allow-Origin header. And this way the browser will then know that the actual request, and in this case the delete request, is safe to perform,
+ * and then executes the delete request itself,
+ */
+app.options('*', cors()) //preflight is available on all the routes
+
 
 //gives our middleware the ability to send static file to the browser, such as the overview.html file
 //app.use(express.static(`${__dirname}/public`))
