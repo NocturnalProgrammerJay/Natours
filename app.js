@@ -28,6 +28,8 @@ const viewRouter = require('./routes/viewRoutes')
 //abstract layer(higher level) of nodejs - framework
 const app = express()
 
+app.enable('trust proxy')
+
 //express sets an engine
 app.set('view engine', 'pug') // npm i pug - gives us template engines
 //Defines which folder the view is located in.
