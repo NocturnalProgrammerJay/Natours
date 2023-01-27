@@ -82,3 +82,13 @@ process.on('unhandledRejection', err => {
   })
 })
 
+/**
+ * In heroku our application seats in a container(dyno) that restarts every 24hrs. Heroku does this by sending a sigterm signal to the application
+ * and the application will shut down immediately. Shut can leave request hanging in the air.
+ */
+process.on('SIGTERM', ()=> {
+  console.log("👋 SIGTERM RECEIVED, Shutting down gracefully ")
+  server.close(() =>{ //handles pending request before server completely shuts down 
+    console.log('💥 Process terminated!')
+  })
+})

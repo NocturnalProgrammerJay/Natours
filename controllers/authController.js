@@ -9,19 +9,17 @@ const Email = require('../utils/email')
 
 const signToken = id => jwt.sign({id: id}, process.env.JWT_SECRET,{ expiresIn: process.env.JWT_EXPIRES_IN }) //uses the id, secret to generate a random jwt string
 
-const createSendToken = (user, statusCode, res) => {
+const createSendToken = (user, statusCode, req, res) => {
 
     const token = signToken(user._id)
-    const cookieOptions = {
+
+    res.cookie('jwt', token, {
         //converts 90 days into milliseconds - 90*24*60*60*1000
         expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRES_IN*24*60*60*1000),
-        httpOnly: true //the browser will only be able to receive the cookie, store it, and send it automatically along with every request.
-    
-    }
-
-    if(process.env.NODE_ENV === 'production') cookieOptions.secure = true // cookie will only be sent on an encrypted connection, https
-
-    res.cookie('jwt', token, cookieOptions)
+        httpOnly: true, //the browser will only be able to receive the cookie, store it, and send it automatically along with every request.
+        secure: req.secure || req.headers['x-forwarded-proto'] === 'https'// cookie will only be sent on an encrypted connection, https
+      }
+    )
 
     //Remove the password from the output
     res.password = undefined
@@ -44,7 +42,7 @@ exports.signup = catchAsync(async (req,res,next) => {
     await new Email(newUser, url).sendWelcome()
 
     // json web token npm i jsonwebtoken
-    createSendToken(newUser,201,res)
+    createSendToken(newUser,201, req, res)
     //jwt.sign() first param takes a object/data as the payload, second param is the secret (string), last argument is for options
     //_id comes from making a copy of the mongo generated id in the code somewhere
 })
@@ -63,7 +61,7 @@ exports.login = catchAsync(async(req, res, next) => {
         return next(new AppError('Incorrect email or password', 401))
     }
     // 3) if everything ok, send token to client - the token 
-    createSendToken(user,201,res)
+    createSendToken(user,201, req, res)
 })
 
 exports.logout = (req, res) => {
@@ -214,7 +212,7 @@ exports.resetPassword = catchAsync(async(req,res,next)=>{
     // 3) Update changedPasswordAt property for the user 
 
     // 4) Log the user in, send JWT
-    createSendToken(user,200,res)
+    createSendToken(user,200,req,res)
 })
 
 exports.updatePassword = catchAsync(async(req, res, next) => {
@@ -232,6 +230,6 @@ exports.updatePassword = catchAsync(async(req, res, next) => {
     await user.save()
 
     // 4) log user in, send JWT
-    createSendToken(user,200,res)
+    createSendToken(user,200,req,res)
 })
 
