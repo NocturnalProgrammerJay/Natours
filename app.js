@@ -24,6 +24,7 @@ const tourRouter = require('./routes/tourRoutes')
 const userRouter = require('./routes/userRoutes')
 const reviewRouter = require('./routes/reviewRoutes')
 const bookingRouter = require('./routes/bookingRoutes')
+const bookingController = require('./controllers/bookingController')
 const viewRouter = require('./routes/viewRoutes')
 
 //abstract layer(higher level) of nodejs - framework
@@ -81,7 +82,13 @@ const limiter = rateLimit({
 
 app.use('/api',limiter)// applies limit to the all the routes that start with 'api'
 
-//Body parser, reading data from the body into req.body
+app.post(
+    '/webhook-checkout', 
+    express.raw({type: 'application/json'}), 
+    bookingController.webhookCheckout
+  )//raw data 
+
+//Body parser, converts data from the body into req.body
 app.use(express.json({limit: '10kb'}))
 // parse data thats coming from a html form, form send data to the server is called urlencoded.
 app.use(express.urlencoded({extended: true, limit: '10kb'}))
