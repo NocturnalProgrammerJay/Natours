@@ -11,6 +11,7 @@ const xss = require('xss-clean')
 const hpp = require('hpp')//http parameter pollution
 const path = require('path')//used to manipulate path names
 const cookieParser = require('cookie-parser') //npm i cookie-parser
+const compression = require('compression')// compresses all responses. ex: send text response to a client, a compresses package makes that text dramatically compressed.
 
 //OperationalErrorHandling Class
 const AppError = require('./utils/appError')
@@ -39,7 +40,6 @@ app.use(express.static(path.join(__dirname, 'public')))
 // 1. Middleware - typically have all of them on the app.js
 //built function that can be found in a get repo. and its using its return function logger. Uses next() at the end.
 //This middleware logs get request object to the console. ex: GET /api/v1/tours 200 3.399 ms - 8682
-console.log(process.env.NODE_ENV)
 
 // 1) GLOBAL MIDDLEWARES
 //Set SECURITY HTTP HEADERS
@@ -84,17 +84,16 @@ app.use(hpp({ // clears up query string and uses the last duplicate query string
 
 }))
 
+app.use(compression())//middleware function to compress text(data) to client
+
 // app.use((req, res, next) => {
-//   console.log('hello from the middleware')
    //Must call .next() or the middleware will not move on and create an infinite loop.
 //   next()
 // })
 
 //test middleware
 app.use((req, res, next) => {
-  //console.log(req.requestTime)
   req.requestTime = new Date().toISOString()
-  //console.log(req.cookies)
   next()
 })
 

@@ -5,7 +5,6 @@ import {login, logout } from './login'
 import {updateSettings} from './updateSettings'
 import { bookTour } from './stripe'
 
-console.log('HELLO FROM PARCEL')
 // DOM ELEMENTS
 const mapBox = document.getElementById('map')
 const loginForm = document.querySelector('.form--login')
@@ -32,18 +31,6 @@ if(loginForm)
     })
 
 if (logOutBtn) logOutBtn.addEventListener('click', logout)
-
-// if (userDataForm)
-//     userDataForm.addEventListener('submit', async e => {
-//         e.preventDefault()
-//         const form = new FormData()//programmatically recreate a multipart form data. WEB API
-
-//         form.append('name', document.getElementById('name').value) //key : value
-//         form.append('email', document.getElementById('email').value)
-//         form.append('photo', document.getElementById('photo').files[0])
-//         console.log(form)
-//         await updateSettings(form, 'data')//ajax using axios we recognize this form as an object as before
-//     })
 
 if (userDataForm)
   userDataForm.addEventListener('submit', e => {
