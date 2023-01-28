@@ -6,10 +6,10 @@ export const hideAlert = () => {
 }
 
 //type is 'success' or 'error'
-export const showAlert = (type, msg) =>{
+export const showAlert = (type, msg, time=7) =>{
     hideAlert()//clears any alerts
 
     const markup = `<div class="alert alert--${type}">${msg}</div>`
     document.querySelector('body').insertAdjacentHTML('afterbegin', markup)
-    window.setTimeout(hideAlert, 5000) //clear the just now added alert after 5s
+    window.setTimeout(hideAlert, time * 1000) //clear the just now added alert after 5s
 }

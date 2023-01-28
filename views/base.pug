@@ -13,7 +13,7 @@ html
         //- script(defer src='/js/login.js')
         //- script(defer src='https://cdnjs.cloudflare.com/ajax/libs/axios/1.2.3/axios.min.js')
         //script(defer src='/js/bundle.js')
-    body
+    body(data-alert=`${alert ? alert : ''}`)
         // HEADER
         include _header
             
