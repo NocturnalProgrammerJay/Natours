@@ -1,3 +1,4 @@
 # Natours
 ### Link: https://natours-jamar.herokuapp.com/
-![img11](https://user-images.githubusercontent.com/96387037/211726599-02bb0c8b-d2e4-43d5-b314-eb7450354259.PNG)
+![natoursGitPic](https://user-images.githubusercontent.com/96387037/215680233-73174243-2a6f-4573-b60c-3f4ec6c4cda0.PNG)
+
